@@ -1,0 +1,398 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Netflix Content Dashboard</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+  :root {
+    --red: #E50914;
+    --red-dark: #B20710;
+    --red-glow: rgba(229,9,20,0.25);
+    --bg: #0d0d0d;
+    --surface: #181818;
+    --surface2: #222;
+    --border: #2a2a2a;
+    --text: #e5e5e5;
+    --muted: #888;
+    --white: #fff;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Segoe UI', Arial, sans-serif; min-height: 100vh; }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(180deg, #000 0%, rgba(0,0,0,0.85) 100%);
+    border-bottom: 2px solid var(--red);
+    padding: 18px 32px;
+    display: flex; align-items: center; justify-content: space-between;
+    position: sticky; top: 0; z-index: 100;
+  }
+  .logo { display: flex; align-items: center; gap: 12px; }
+  .logo-n {
+    font-size: 36px; font-weight: 900; color: var(--red);
+    letter-spacing: -2px; line-height: 1;
+    text-shadow: 0 0 20px var(--red-glow);
+  }
+  .logo-title { font-size: 13px; color: var(--muted); letter-spacing: 3px; text-transform: uppercase; }
+  .header-badge {
+    background: var(--red); color: #fff;
+    font-size: 11px; font-weight: 700; letter-spacing: 1.5px;
+    padding: 4px 12px; border-radius: 3px; text-transform: uppercase;
+  }
+
+  /* ── KPI Row ── */
+  .kpi-row {
+    display: grid; grid-template-columns: repeat(4, 1fr);
+    gap: 16px; padding: 28px 32px 0;
+  }
+  .kpi {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-top: 3px solid var(--red);
+    border-radius: 8px;
+    padding: 20px 22px;
+    position: relative; overflow: hidden;
+  }
+  .kpi::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: radial-gradient(ellipse at top left, var(--red-glow) 0%, transparent 70%);
+    pointer-events: none;
+  }
+  .kpi-value { font-size: 34px; font-weight: 800; color: var(--white); line-height: 1; }
+  .kpi-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; margin-top: 6px; }
+  .kpi-sub { font-size: 12px; color: var(--red); margin-top: 8px; font-weight: 600; }
+
+  /* ── Grid Layout ── */
+  .dashboard { padding: 24px 32px 40px; display: grid; gap: 20px; }
+  .row-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  .row-3 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .row-full { display: grid; grid-template-columns: 1fr; gap: 20px; }
+
+  /* ── Card ── */
+  .card {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: 10px;
+    padding: 22px 24px;
+    position: relative;
+  }
+  .card-title {
+    font-size: 12px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; color: var(--muted);
+    margin-bottom: 18px; display: flex; align-items: center; gap: 8px;
+  }
+  .card-title::before {
+    content: ''; display: block;
+    width: 3px; height: 14px; background: var(--red); border-radius: 2px;
+  }
+  canvas { max-height: 280px; }
+
+  /* ── Donut Labels ── */
+  .donut-wrap { display: flex; align-items: center; gap: 24px; }
+  .donut-wrap canvas { max-width: 180px; max-height: 180px; flex-shrink: 0; }
+  .donut-legend { flex: 1; }
+  .legend-item { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; }
+  .legend-dot { width: 12px; height: 12px; border-radius: 50%; flex-shrink: 0; }
+  .legend-label { font-size: 13px; color: var(--text); }
+  .legend-val { margin-left: auto; font-size: 13px; font-weight: 700; color: var(--white); }
+  .legend-pct { font-size: 11px; color: var(--muted); margin-left: 4px; }
+
+  /* ── Bar ── */
+  .hbar-list { display: flex; flex-direction: column; gap: 10px; }
+  .hbar-item {}
+  .hbar-header { display: flex; justify-content: space-between; margin-bottom: 4px; }
+  .hbar-name { font-size: 12px; color: var(--text); }
+  .hbar-count { font-size: 12px; font-weight: 700; color: var(--white); }
+  .hbar-track { background: var(--surface2); border-radius: 3px; height: 6px; }
+  .hbar-fill { height: 6px; border-radius: 3px; background: linear-gradient(90deg, var(--red-dark), var(--red)); }
+
+  /* ── Filter bar ── */
+  .filter-bar {
+    display: flex; align-items: center; gap: 12px;
+    padding: 0 32px 0; margin-bottom: -8px;
+  }
+  .filter-label { font-size: 11px; color: var(--muted); letter-spacing: 1.5px; text-transform: uppercase; }
+  .filter-btn {
+    background: var(--surface2); border: 1px solid var(--border);
+    color: var(--muted); font-size: 12px; padding: 6px 16px;
+    border-radius: 20px; cursor: pointer; transition: all .2s;
+  }
+  .filter-btn:hover, .filter-btn.active {
+    background: var(--red); border-color: var(--red); color: #fff;
+  }
+
+  /* ── Footer ── */
+  footer {
+    text-align: center; padding: 20px;
+    font-size: 11px; color: #444; letter-spacing: 1px;
+    border-top: 1px solid var(--border); margin-top: 10px;
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">
+    <div class="logo-n">N</div>
+    <div>
+      <div style="font-size:17px;font-weight:800;color:#fff;letter-spacing:1px;">NETFLIX</div>
+      <div class="logo-title">Content Analytics Dashboard</div>
+    </div>
+  </div>
+  <div class="header-badge">📊 8,807 Titles</div>
+</header>
+
+<!-- KPI Row -->
+<div class="kpi-row">
+  <div class="kpi">
+    <div class="kpi-value">8,807</div>
+    <div class="kpi-label">Total Titles</div>
+    <div class="kpi-sub">↑ Peak in 2019</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">6,131</div>
+    <div class="kpi-label">Movies</div>
+    <div class="kpi-sub">69.6% of catalog</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">2,676</div>
+    <div class="kpi-label">TV Shows</div>
+    <div class="kpi-sub">30.4% of catalog</div>
+  </div>
+  <div class="kpi">
+    <div class="kpi-value">85+</div>
+    <div class="kpi-label">Countries</div>
+    <div class="kpi-sub">US leads with 2,818</div>
+  </div>
+</div>
+
+<div style="height:24px;"></div>
+
+<!-- Row 1: Line chart full width -->
+<div class="dashboard" style="padding-bottom:0; padding-top:0;">
+  <div class="card row-full">
+    <div class="card-title">Content Released per Year — Movies vs TV Shows</div>
+    <canvas id="lineChart"></canvas>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<!-- Row 2: Donut + Ratings bar -->
+<div class="dashboard" style="padding-top:0; padding-bottom:0;">
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Content Type Split</div>
+      <div class="donut-wrap">
+        <canvas id="donutChart"></canvas>
+        <div class="donut-legend">
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#E50914;"></div>
+            <div class="legend-label">Movies</div>
+            <div class="legend-val">6,131<span class="legend-pct">69.6%</span></div>
+          </div>
+          <div class="legend-item">
+            <div class="legend-dot" style="background:#f5a623;"></div>
+            <div class="legend-label">TV Shows</div>
+            <div class="legend-val">2,676<span class="legend-pct">30.4%</span></div>
+          </div>
+          <div style="margin-top:16px; padding-top:16px; border-top:1px solid var(--border); font-size:12px; color:var(--muted);">
+            Netflix catalog skews heavily toward movies, but TV shows are growing proportionally year-over-year.
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-title">Content Rating Distribution</div>
+      <canvas id="ratingChart"></canvas>
+    </div>
+  </div>
+</div>
+
+<div style="height:20px;"></div>
+
+<!-- Row 3: Country bars + Genre bars -->
+<div class="dashboard" style="padding-top:0;">
+  <div class="row-2">
+    <div class="card">
+      <div class="card-title">Top 10 Content-Producing Countries</div>
+      <div class="hbar-list" id="countryBars"></div>
+    </div>
+    <div class="card">
+      <div class="card-title">Top 12 Genres</div>
+      <div class="hbar-list" id="genreBars"></div>
+    </div>
+  </div>
+</div>
+
+<footer>Netflix Content Dashboard · Built from 8,807 titles · Data via Kaggle Netflix Dataset</footer>
+
+<script>
+const RED = '#E50914';
+const RED_DARK = '#B20710';
+const ORANGE = '#f5a623';
+const SURFACE = '#222';
+const TEXT = '#e5e5e5';
+const MUTED = '#888';
+
+Chart.defaults.color = MUTED;
+Chart.defaults.borderColor = '#2a2a2a';
+Chart.defaults.font.family = "'Segoe UI', Arial, sans-serif";
+
+// ── Line Chart ──
+const years = [2010,2011,2012,2013,2014,2015,2016,2017,2018,2019,2020,2021];
+const movies = [1,13,3,6,19,56,253,839,1237,1424,1284,993];
+const tv     = [0,0,0,4,4,17,165,325,388,575,594,505];
+
+new Chart(document.getElementById('lineChart'), {
+  type: 'line',
+  data: {
+    labels: years,
+    datasets: [
+      {
+        label: 'Movies',
+        data: movies,
+        borderColor: RED,
+        backgroundColor: 'rgba(229,9,20,0.12)',
+        borderWidth: 2.5,
+        pointBackgroundColor: RED,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        fill: true,
+        tension: 0.4
+      },
+      {
+        label: 'TV Shows',
+        data: tv,
+        borderColor: ORANGE,
+        backgroundColor: 'rgba(245,166,35,0.10)',
+        borderWidth: 2.5,
+        pointBackgroundColor: ORANGE,
+        pointRadius: 4,
+        pointHoverRadius: 7,
+        fill: true,
+        tension: 0.4
+      }
+    ]
+  },
+  options: {
+    responsive: true,
+    interaction: { mode: 'index', intersect: false },
+    plugins: {
+      legend: { labels: { color: TEXT, boxWidth: 12, padding: 20 } },
+      tooltip: {
+        backgroundColor: '#111',
+        borderColor: '#333',
+        borderWidth: 1,
+        titleColor: '#fff',
+        bodyColor: TEXT
+      }
+    },
+    scales: {
+      x: { grid: { color: '#1e1e1e' }, ticks: { color: MUTED } },
+      y: { grid: { color: '#1e1e1e' }, ticks: { color: MUTED },
+           beginAtZero: true }
+    }
+  }
+});
+
+// ── Donut ──
+new Chart(document.getElementById('donutChart'), {
+  type: 'doughnut',
+  data: {
+    labels: ['Movies', 'TV Shows'],
+    datasets: [{
+      data: [6131, 2676],
+      backgroundColor: [RED, ORANGE],
+      borderColor: '#181818',
+      borderWidth: 3,
+      hoverOffset: 6
+    }]
+  },
+  options: {
+    responsive: true,
+    cutout: '68%',
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111', borderColor: '#333', borderWidth: 1,
+        titleColor: '#fff', bodyColor: TEXT,
+        callbacks: {
+          label: ctx => ` ${ctx.label}: ${ctx.raw.toLocaleString()} (${(ctx.raw/8807*100).toFixed(1)}%)`
+        }
+      }
+    }
+  }
+});
+
+// ── Rating Bar Chart ──
+const ratings = ['TV-MA','TV-14','TV-PG','R','PG-13','TV-Y7','TV-Y','PG','TV-G','NR'];
+const ratingVals = [3207,2160,863,799,490,334,307,287,220,80];
+const ratingColors = ratings.map((r,i) => `hsl(${350 - i*15}, 80%, ${55 + i*2}%)`);
+
+new Chart(document.getElementById('ratingChart'), {
+  type: 'bar',
+  data: {
+    labels: ratings,
+    datasets: [{
+      data: ratingVals,
+      backgroundColor: ratingColors,
+      borderRadius: 4,
+      borderSkipped: false
+    }]
+  },
+  options: {
+    responsive: true,
+    plugins: {
+      legend: { display: false },
+      tooltip: {
+        backgroundColor: '#111', borderColor: '#333', borderWidth: 1,
+        callbacks: { label: ctx => ` ${ctx.raw.toLocaleString()} titles` }
+      }
+    },
+    scales: {
+      x: { grid: { display: false }, ticks: { color: MUTED, font: { size: 11 } } },
+      y: { grid: { color: '#1e1e1e' }, ticks: { color: MUTED }, beginAtZero: true }
+    }
+  }
+});
+
+// ── Country Horizontal Bars ──
+const countries = {
+  'United States': 2818, 'India': 972, 'Unknown': 831,
+  'United Kingdom': 419, 'Japan': 245, 'South Korea': 199,
+  'Canada': 181, 'Spain': 145, 'France': 124, 'Mexico': 110
+};
+const cMax = Math.max(...Object.values(countries));
+const cList = document.getElementById('countryBars');
+Object.entries(countries).forEach(([name, val]) => {
+  cList.innerHTML += `
+    <div class="hbar-item">
+      <div class="hbar-header"><span class="hbar-name">${name}</span><span class="hbar-count">${val.toLocaleString()}</span></div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${(val/cMax*100).toFixed(1)}%"></div></div>
+    </div>`;
+});
+
+// ── Genre Horizontal Bars ──
+const genres = {
+  'International Movies': 2752, 'Dramas': 2427, 'Comedies': 1674,
+  'International TV Shows': 1351, 'Documentaries': 869, 'Action & Adventure': 859,
+  'TV Dramas': 763, 'Independent Movies': 756, 'Children & Family': 641,
+  'Romantic Movies': 616, 'TV Comedies': 581, 'Thrillers': 577
+};
+const gMax = Math.max(...Object.values(genres));
+const gList = document.getElementById('genreBars');
+Object.entries(genres).forEach(([name, val]) => {
+  gList.innerHTML += `
+    <div class="hbar-item">
+      <div class="hbar-header"><span class="hbar-name">${name}</span><span class="hbar-count">${val.toLocaleString()}</span></div>
+      <div class="hbar-track"><div class="hbar-fill" style="width:${(val/gMax*100).toFixed(1)}%;background:linear-gradient(90deg,#7b0a0a,var(--red-dark,#B20710))"></div></div>
+    </div>`;
+});
+</script>
+</body>
+</html>
