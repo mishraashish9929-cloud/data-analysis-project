@@ -2,7 +2,7 @@
 An end-to-end data analytics project that explores Netflix's global content library using Python for data cleaning and Power BI for interactive visualization.
 
 📊 Live Dashboard
-🔗 View Dashboard
+🔗 https://mishraashish9929-cloud.github.io/data-analysis-project/
 
 🛠️ Tools & Technologies
 ToolPurposePython (Pandas)Data cleaning & preprocessingPower BIDashboard & visualizationsGitHub PagesDashboard hosting
@@ -29,10 +29,11 @@ Rating distribution — TV-MA is the most common rating
 📁 Project Structure
 netflix-dashboard/
 │
-├── cleaned_netflix_data.csv   # dataset
-├── data.py                    # Python data cleaning notebook
-├── index.html                 # Interactive dashboard
-└── README.md                  # Project documentation
+
+├── cleaned_netflix_data.csv    # dataset
+├── data.py                     # Python data cleaning notebook
+├── index.html                  # Interactive dashboard
+└── README.md                   # Project documentation
 
 📂 Dataset
 
